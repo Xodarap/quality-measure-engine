@@ -195,8 +195,13 @@ module QME
       # that the record belongs to, such as numerator, etc.
       def map_records_into_measure_groups(prefilter={})
         measure = Builder.new(get_db(), @measure_def, @parameter_values)
+        mapfn = ''
+        #File.open('/home/demo/quality-measures/script/mapfn.js','r') do |f|
+        #  mapfn = f.read
+        #end
+        mapfn = measure.map_function
         get_db().command(:mapreduce => 'records',
-                         :map => measure.map_function,
+                         :map => mapfn,
                          :reduce => "function(key, values){return values;}",
                          :out => {:reduce => 'patient_cache', :sharded => true},
                          :finalize => measure.finalize_function,
