@@ -56,6 +56,7 @@ module QME
     SEX ='SEX'
     POSTAL_CODE = 'POSTAL_CODE'
     PAYER   = 'PAYER'
+    CMS_PAYER = 'CMS_PAYER'
 
 
 

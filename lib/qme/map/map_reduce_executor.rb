@@ -10,7 +10,8 @@ module QME
       SUPPLEMENTAL_DATA_ELEMENTS = {QME::QualityReport::RACE => "$value.race.code",
                                     QME::QualityReport::ETHNICITY => "$value.ethnicity.code",
                                     QME::QualityReport::SEX => "$value.gender",
-                                    QME::QualityReport::PAYER => "$value.payer.code"}
+                                    QME::QualityReport::PAYER => "$value.payer.code",
+                                    QME::QualityReport::CMS_PAYER => "cms_payer"}
       # Create a new Executor for a specific measure, effective date and patient population.
       # @param [String] measure_id the measure identifier
       # @param [String] sub_id the measure sub-identifier or null if the measure is single numerator
@@ -87,21 +88,26 @@ module QME
         supplemental_data = Hash[*keys.map{|k| [k,{QME::QualityReport::RACE => {},
                                                    QME::QualityReport::ETHNICITY => {},
                                                    QME::QualityReport::SEX => {},
-                                                   QME::QualityReport::PAYER => {}}]}.flatten]
+                                                   QME::QualityReport::PAYER => {},
+                                                   QME::QualityReport::CMS_PAYER => {}}]}.flatten]
 
         keys.each do |pop_id|
           _match = match.clone
           _match["value.#{pop_id}"] = {"$gt" => 0}
           SUPPLEMENTAL_DATA_ELEMENTS.each_pair do |supp_element,location|
-            group1 = {"$group" => { "_id" => { "id" => "$_id", "val" => location}}}
-            group2 = {"$group" => {"_id" => "$_id.val", "val" =>{"$sum" => 1} }}
-            pipeline = [{"$match" =>_match},group1,group2]
-            aggregate = get_db.command(:aggregate => 'patient_cache', :pipeline => pipeline)
+            if location == "cms_payer"
+              v = calculate_payer_supp(_match)
+            else
+              group1 = {"$group" => { "_id" => { "id" => "$_id", "val" => location}}}
+              group2 = {"$group" => {"_id" => "$_id.val", "val" =>{"$sum" => 1} }}
+              pipeline = [{"$match" =>_match},group1,group2]
+              aggregate = get_db.command(:aggregate => 'patient_cache', :pipeline => pipeline)
 
-            v = {}
-            (aggregate["result"] || []).each  do |entry|
-              code  = entry["_id"].nil? ? "UNK" : entry["_id"]
-              v[code] = entry["val"]
+              v = {}
+              (aggregate["result"] || []).each  do |entry|
+                code  = entry["_id"].nil? ? "UNK" : entry["_id"]
+                v[code] = entry["val"]
+              end
             end
             supplemental_data[pop_id] ||= {}
             supplemental_data[pop_id][supp_element] = v
@@ -110,6 +116,43 @@ module QME
         supplemental_data
       end
 
+      # Medicare wants payors stratified at a higher level than the standard QRDA.
+      # Unfortunately, Mongo ID doesn't allow chaining map reduce calls, so this incorporates
+      # the usual aggregation call into one map reduce.
+      def calculate_payer_supp(match)
+        map = %Q{
+          function() {
+            if(this.value.payer == undefined) {
+              emit(null,1);
+            } else {
+              leading_digit = (""+this.value.payer.code).substring(0,1);
+              switch(leading_digit){
+                 case '1':
+                   emit('A',1);
+                    break;
+                 case '2':
+                   emit('B',1);
+                    break;
+                 case '5':
+                  case '6':
+                   emit('C',1);
+                    break;
+                 default:
+                   emit('D',1);
+              }
+            }
+          }
+        }
+        reduce = "function(k,v){return Array.sum(v);}"
+        aggregate = PatientCache.where(match).map_reduce(map,reduce).out(inline:true)
+
+        v = {}
+        (aggregate || []).each  do |entry|
+          code  = entry["_id"].nil? ? "UNK" : entry["_id"]
+          v[code] = entry["value"]
+        end
+        v
+      end
 
       # Examines the patient_cache collection and generates a total of all groups
       # for the measure. The totals are placed in a document in the query_cache
