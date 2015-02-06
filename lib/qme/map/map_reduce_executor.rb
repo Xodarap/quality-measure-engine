@@ -173,7 +173,8 @@ module QME
           QME::QualityReport::CONSIDERED => {"$sum" => 1}
         }}
 
-        aggregate = get_db.command(:aggregate => 'patient_cache', :pipeline => pipeline)
+        aggregate = get_db.command(:aggregate => 'patient_cache', :pipeline => pipeline,
+        :allowDiskUse => true)
         if aggregate['ok'] != 1
           raise RuntimeError, "Aggregation Failed"
         elsif aggregate['result'].size !=1
