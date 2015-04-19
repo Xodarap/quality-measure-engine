@@ -244,6 +244,10 @@ module QME
         #  mapfn = f.read
         #end
         mapfn = measure.map_function
+        # File.open("/home/demo/quality-measures/script/#{@measure_id}.js",'w') do |f|
+        #   f.write mapfn
+        # end
+        p prefilter
         get_db().command(:mapreduce => 'records',
                          :map => mapfn,
                          :reduce => "function(key, values){return values;}",
