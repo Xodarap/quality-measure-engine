@@ -60,56 +60,6 @@ module QME
 
 
 
-    # Removes the cached results for the patient with the supplied id and
-    # recalculates as necessary
-    def self.update_patient_results(id)
-      # TODO: need to wait for any outstanding calculations to complete and then prevent
-      # any new ones from starting until we are done.
-
-      # drop any cached measure result calculations for the modified patient
-     QME::PatientCache.where('value.medical_record_id' => id).destroy()
-
-      # get a list of cached measure results for a single patient
-      sample_patient = QME::PatientCache.where({}).first
-      if sample_patient
-        cached_results = QME::PatientCache.where({'value.patient_id' => sample_patient['value']['patient_id']})
-
-        # for each cached result (a combination of measure_id, sub_id, effective_date and test_id)
-        cached_results.each do |measure|
-          # recalculate patient_cache value for modified patient
-          value = measure['value']
-          map = QME::MapReduce::Executor.new(value['measure_id'], value['sub_id'],
-            'effective_date' => value['effective_date'], 'test_id' => value['test_id'])
-          map.map_record_into_measure_groups(id)
-        end
-      end
-
-      # remove the query totals so they will be recalculated using the new results for
-      # the modified patient
-      self.destroy_all
-    end
-
-
-
-
-    def self.find_or_create(measure_id, sub_id, parameter_values)
-      @parameter_values = parameter_values
-      @parameter_values[:filters] = self.normalize_filters(@parameter_values[:filters])
-      query = {measure_id: measure_id, sub_id: sub_id}
-      query.merge! @parameter_values
-      self.find_or_create_by(query)
-    end
-
-    def self.queue_staged_rollups(measure_id,sub_id,effective_date)
-     query = Mongoid.default_session["rollup_buffer"].find({measure_id: measure_id, sub_id: sub_id, effective_date: effective_date})
-     query.each do |options|
-        if QME::QualityReport.where("_id" => options["quality_report_id"]).count == 1
-           QME::QualityReport.enque_job(options,:rollup)
-        end
-     end
-     query.remove_all
-    end
-
     # Determines whether the quality report has been calculated for the given
     # measure and parameters
     # @return [true|false]
@@ -169,11 +119,6 @@ module QME
       QME::QualityMeasure.where({"hqmf_id"=>self.measure_id, "sub_id" => self.sub_id}).first
     end
 
-    # make sure all filter id arrays are sorted
-    def self.normalize_filters(filters)
-      filters.each {|key, value| value.sort_by! {|v| (v.is_a? Hash) ? "#{v}" : v} if value.is_a? Array} unless filters.nil?
-    end
-
     def patient_result(patient_id = nil)
       query = patient_cache_matcher
       if patient_id
@@ -209,6 +154,58 @@ module QME
         end
       end
       match
+    end
+
+    # Removes the cached results for the patient with the supplied id and
+    # recalculates as necessary
+    def self.update_patient_results(id)
+      # TODO: need to wait for any outstanding calculations to complete and then prevent
+      # any new ones from starting until we are done.
+
+      # drop any cached measure result calculations for the modified patient
+     QME::PatientCache.where('value.medical_record_id' => id).destroy()
+
+      # get a list of cached measure results for a single patient
+      sample_patient = QME::PatientCache.where({}).first
+      if sample_patient
+        cached_results = QME::PatientCache.where({'value.patient_id' => sample_patient['value']['patient_id']})
+
+        # for each cached result (a combination of measure_id, sub_id, effective_date and test_id)
+        cached_results.each do |measure|
+          # recalculate patient_cache value for modified patient
+          value = measure['value']
+          map = QME::MapReduce::Executor.new(value['measure_id'], value['sub_id'],
+            'effective_date' => value['effective_date'], 'test_id' => value['test_id'])
+          map.map_record_into_measure_groups(id)
+        end
+      end
+
+      # remove the query totals so they will be recalculated using the new results for
+      # the modified patient
+      self.destroy_all
+    end
+
+    def self.find_or_create(measure_id, sub_id, parameter_values)
+      @parameter_values = parameter_values
+      @parameter_values[:filters] = self.normalize_filters(@parameter_values[:filters])
+      query = {measure_id: measure_id, sub_id: sub_id}
+      query.merge! @parameter_values
+      self.find_or_create_by(query)
+    end
+
+    def self.queue_staged_rollups(measure_id,sub_id,effective_date)
+     query = Mongoid.default_session["rollup_buffer"].find({measure_id: measure_id, sub_id: sub_id, effective_date: effective_date})
+     query.each do |options|
+        if QME::QualityReport.where("_id" => options["quality_report_id"]).count == 1
+           QME::QualityReport.enque_job(options,:rollup)
+        end
+     end
+     query.remove_all
+    end
+
+    # make sure all filter id arrays are sorted
+    def self.normalize_filters(filters)
+      filters.each {|key, value| value.sort_by! {|v| (v.is_a? Hash) ? "#{v}" : v} if value.is_a? Array} unless filters.nil?
     end
 
     protected
