@@ -19,9 +19,10 @@ module QME
       end
 
       def perform
-        if !@quality_report.calculated?
-          map = QME::MapReduce::Executor.new(@quality_report.measure_id,@quality_report.sub_id, @options.merge('start_time' => Time.now.to_i))
-          if !@quality_report.patients_cached?
+        unless @quality_report.calculated?
+          mre_options = @options.merge('start_time' => Time.now.to_i)
+          map = QME::MapReduce::Executor.new(@quality_report.measure_id, @quality_report.sub_id, mre_options)
+          unless @quality_report.patients_cached?
             tick('Starting MapReduce')
             map.map_records_into_measure_groups(@options['prefilter'])
             tick('MapReduce complete')
@@ -29,10 +30,9 @@ module QME
 
           tick('Calculating group totals')
           result = map.count_records_in_measure_groups
-          @quality_report.result=result
-          @quality_report.save
-          completed("#{@measure_id}#{@sub_id}: p#{result[QME::QualityReport::POPULATION]}, d#{result[QME::QualityReport::DENOMINATOR]}, n#{result[QME::QualityReport::NUMERATOR]}, excl#{result[QME::QualityReport::EXCLUSIONS]}, excep#{result[QME::QualityReport::EXCEPTIONS]}")
-          QME::QualityReport.queue_staged_rollups(@quality_report.measure_id,@quality_report.sub_id,@quality_report.effective_date)
+          @quality_report.update_attribute(:result, result)
+          completed(completion_summary(result))
+          QME::QualityReport.queue_staged_rollups(@quality_report.measure_id, @quality_report.sub_id, @quality_report.effective_date)
         end
         @quality_report
       end
@@ -73,26 +73,33 @@ module QME
         @quality_report.save
       end
 
-    # Returns the status of a measure calculation job
-    # @param job_id the id of the job to check on
-    # @return [Symbol] Will return the status: :complete, :queued, :running, :failed
-    def self.status(job_id)
-      job = Delayed::Job.where(_id: job_id).first
-      if job.nil?
-        # If we can't find the job, we assume that it is complete
-        :complete
-      else
-        if job.locked_at.nil?
-          :queued
+      # Returns the status of a measure calculation job
+      # @param job_id the id of the job to check on
+      # @return [Symbol] Will return the status: :complete, :queued, :running, :failed
+      def self.status(job_id)
+        job = Delayed::Job.where(_id: job_id).first
+        if job.nil?
+          # If we can't find the job, we assume that it is complete
+          :complete
         else
-          if job.failed?
-            :failed
+          if job.locked_at.nil?
+            :queued
           else
-            :running
+            if job.failed?
+              :failed
+            else
+              :running
+            end
           end
         end
       end
-    end
+
+      private
+
+      def completion_summary(result)
+        "#{@measure_id}#{@sub_id}: p#{result[QME::QualityReport::POPULATION]}, d#{result[QME::QualityReport::DENOMINATOR]}, n#{result[QME::QualityReport::NUMERATOR]}, excl#{result[QME::QualityReport::EXCLUSIONS]}, excep#{result[QME::QualityReport::EXCEPTIONS]}"
+      end
+
     end
   end
 end

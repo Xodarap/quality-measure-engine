@@ -23,9 +23,8 @@ module QME
 
         @parameter_values = parameter_values
         q_filter = {hqmf_id: @measure_id,sub_id: @sub_id}
-        if @parameter_values.keys.index("bundle_id")
+        if @parameter_values.key?("bundle_id")
           q_filter["bundle_id"] = @parameter_values['bundle_id']
-          @bundle_id = @parameter_values['bundle_id']
         end
         @measure_def = QualityMeasure.where(q_filter).first
       end
@@ -189,9 +188,8 @@ module QME
                                  QME::QualityReport::CONSIDERED => 0}]
         end
 
-        nqf_id = @measure_def.nqf_id || @measure_def['id']
         result = QME::QualityReportResult.new
-        result.population_ids=@measure_def.population_ids
+        result.population_ids = @measure_def.population_ids
 
 
         if @measure_def.continuous_variable
@@ -239,17 +237,8 @@ module QME
       # that the record belongs to, such as numerator, etc.
       def map_records_into_measure_groups(prefilter={})
         measure = Builder.new(get_db(), @measure_def, @parameter_values)
-        mapfn = ''
-        #File.open('/home/demo/quality-measures/script/mapfn.js','r') do |f|
-        #  mapfn = f.read
-        #end
-        mapfn = measure.map_function
-        # File.open("/home/demo/quality-measures/script/#{@measure_id}.js",'w') do |f|
-        #   f.write mapfn
-        # end
-        p prefilter
         get_db().command(:mapreduce => 'records',
-                         :map => mapfn,
+                         :map => measure.map_function,
                          :reduce => "function(key, values){return values;}",
                          :out => {:reduce => 'patient_cache', :sharded => true},
                          :finalize => measure.finalize_function,
