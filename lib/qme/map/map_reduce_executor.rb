@@ -237,12 +237,12 @@ module QME
       # that the record belongs to, such as numerator, etc.
       def map_records_into_measure_groups(prefilter={})
         measure = Builder.new(get_db(), @measure_def, @parameter_values)
-        get_db().command(:mapreduce => 'records',
-                         :map => measure.map_function,
-                         :reduce => "function(key, values){return values;}",
-                         :out => {:reduce => 'patient_cache', :sharded => true},
-                         :finalize => measure.finalize_function,
-                         :query => prefilter)
+        get_db().command(mapreduce: 'records',
+                         map: measure.map_function,
+                         reduce: "function(key, values){return values;}",
+                         out: {reduce: 'patient_cache', sharded: true},
+                         finalize: measure.finalize_function,
+                         query: prefilter)
         QME::ManualExclusion.apply_manual_exclusions(@measure_id,@sub_id)
       end
 
@@ -250,15 +250,9 @@ module QME
       # This will create a document in the patient_cache collection. This document
       # will state the measure groups that the record belongs to, such as numerator, etc.
       def map_record_into_measure_groups(patient_id)
-        measure = Builder.new(get_db(), @measure_def, @parameter_values)
-        get_db().command(:mapreduce => 'records',
-                         :map => measure.map_function,
-                         :reduce => "function(key, values){return values;}",
-                         :out => {:reduce => 'patient_cache', :sharded => true},
-                         :finalize => measure.finalize_function,
-                         :query => {:medical_record_number => patient_id, :test_id => @parameter_values["test_id"]})
-        QME::ManualExclusion.apply_manual_exclusions(@measure_id,@sub_id)
-
+        prefilter = { medical_record_number: patient_id,
+                      test_id: @parameter_values["test_id"] }
+        map_records_into_measure_groups(prefilter)
       end
 
       # This method runs the MapReduce job for the measure and a specific patient.
