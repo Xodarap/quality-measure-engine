@@ -114,7 +114,6 @@ module QME
       return self unless should_calculate?(options)
 
       if (asynchronous)
-        options[:asynchronous] = true
         if patients_cached?
           queued!
           self.class.enque_job(options, :rollup)
