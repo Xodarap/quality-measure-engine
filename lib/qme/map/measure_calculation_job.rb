@@ -12,18 +12,16 @@ module QME
     class MeasureCalculationJob
       attr_accessor :quality_report
 
-      def initialize(options)
-        @quality_report = QME::QualityReport.find(options["quality_report_id"])
-        @options = options
-        @options.merge! @quality_report.attributes
+      def initialize(qr_id)
+        @quality_report = QME::QualityReport.find(qr_id)
       end
 
       def perform
         unless @quality_report.calculated?
-          map = QME::MapReduce::Executor.new(@quality_report.measure_id, @quality_report.sub_id, @options)
+          map = QME::MapReduce::Executor.new(@quality_report)
           unless @quality_report.patients_cached?
             tick('Starting MapReduce')
-            map.map_records_into_measure_groups(@options['prefilter'])
+            map.map_records_into_measure_groups(@quality_report['prefilter'])
             tick('MapReduce complete')
           end
 

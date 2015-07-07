@@ -58,6 +58,8 @@ module QME
     PAYER   = 'PAYER'
     CMS_PAYER = 'CMS_PAYER'
 
+    attr_reader :map_config
+
 
     # Accessors for the various status['state'] flags, similar API to
     # ActiveRecord::Enum.
@@ -104,9 +106,14 @@ module QME
       QME::QualityReport.where({measure_id: self.measure_id,sub_id:self.sub_id, effective_date: self.effective_date, test_id: self.test_id }).nin("status.state" =>["unknown","staged"]).exists?
     end
 
+    def configure(params)
+      @map_config = QME::MapReduce::MapConfig.configure(params)
+    end
+
     # Kicks off a background job to calculate the measure
     # @return a unique id for the measure calculation job
     def calculate(parameters, asynchronous=true)
+      configure(parameters)
 
       options = {'quality_report_id' => self.id}
       options.merge! parameters || {}
@@ -116,17 +123,21 @@ module QME
       if (asynchronous)
         if patients_cached?
           queued!
-          self.class.enque_job(options, :rollup)
+          enque_job(:rollup)
         elsif calculation_queued_or_running?
           stage_rollup!(options)
         else
           queued!
-          self.class.enque_job(options, :calculation)
+          enque_job(:calculation)
         end
       else
-        mcj = QME::MapReduce::MeasureCalculationJob.new(options)
+        mcj = QME::MapReduce::MeasureCalculationJob.new(id)
         mcj.perform
       end
+    end
+
+    def enque_job(queue)
+      Delayed::Job.enqueue(QME::MapReduce::MeasureCalculationJob.new(id), {queue: queue})
     end
 
     def should_calculate?(options)

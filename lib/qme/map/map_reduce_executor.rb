@@ -16,30 +16,32 @@ module QME
       # @param [String] measure_id the measure identifier
       # @param [String] sub_id the measure sub-identifier or null if the measure is single numerator
       # @param [Hash] parameter_values a hash that may contain the following keys: 'effective_date' the measurement period end date, 'test_id' an identifier for a specific set of patients
-      def initialize(measure_id,sub_id, parameter_values)
+      def initialize(quality_report)
 
-        @measure_id = measure_id
-        @sub_id =sub_id
+        @quality_report = quality_report
+        @measure_id = quality_report.measure_id
+        @sub_id = quality_report.sub_id
         @start_time = Time.now.to_i
 
-        @parameter_values = parameter_values
-        q_filter = {hqmf_id: @measure_id,sub_id: @sub_id}
-        if @parameter_values.key?("bundle_id")
-          q_filter["bundle_id"] = @parameter_values['bundle_id']
-        end
-        @measure_def = QualityMeasure.where(q_filter).first
+        # @parameter_values = parameter_values
+        # q_filter = {hqmf_id: @measure_id, sub_id: @sub_id}
+        # if @parameter_values.key?("bundle_id")
+        #   q_filter["bundle_id"] = @parameter_values['bundle_id']
+        # end
+        # @measure_def = QualityMeasure.where(q_filter).first
+        @measure_def = @quality_report.measure
       end
 
       def build_query
         pipeline = []
 
-        filters = @parameter_values["filters"]
+        filters = @quality_report["filters"]
 
 
-        match = {'value.measure_id' => @measure_id,
+        match = {'value.measure_id'       => @measure_id,
                  'value.sub_id'           => @sub_id,
-                 'value.effective_date'   => @parameter_values['effective_date'],
-                 'value.test_id'          => @parameter_values['test_id'],
+                 'value.effective_date'   => @quality_report['effective_date'],
+                 'value.test_id'          => @quality_report['test_id'],
                  'value.manual_exclusion' => {'$in' => [nil, false]}}
 
         if(filters)
@@ -80,8 +82,8 @@ module QME
 
         match = {'value.measure_id' => @measure_id,
                  'value.sub_id'           => @sub_id,
-                 'value.effective_date'   => @parameter_values['effective_date'],
-                 'value.test_id'          => @parameter_values['test_id'],
+                 'value.effective_date'   => @quality_report['effective_date'],
+                 'value.test_id'          => @quality_report['test_id'],
                  'value.manual_exclusion' => {'$in' => [nil, false]}}
 
         keys = @measure_def.population_ids.keys - [QME::QualityReport::OBSERVATION, "stratification"]
@@ -237,7 +239,7 @@ module QME
       # in the patient_cache collection. These documents will state the measure groups
       # that the record belongs to, such as numerator, etc.
       def map_records_into_measure_groups(prefilter={})
-        measure = Builder.new(get_db(), @measure_def, @parameter_values)
+        measure = Builder.new(get_db(), @quality_report)
         get_db().command(mapreduce: 'records',
                          map: measure.map_function,
                          reduce: "function(key, values){return values;}",
@@ -252,7 +254,7 @@ module QME
       # will state the measure groups that the record belongs to, such as numerator, etc.
       def map_record_into_measure_groups(patient_id)
         prefilter = { medical_record_number: patient_id,
-                      test_id: @parameter_values["test_id"] }
+                      test_id: @quality_report["test_id"] }
         map_records_into_measure_groups(prefilter)
       end
 
@@ -260,13 +262,13 @@ module QME
       # This will *not* create a document in the patient_cache collection, instead the
       # result is returned directly.
       def get_patient_result(patient_id)
-        measure = Builder.new(get_db(), @measure_def, @parameter_values)
+        measure = Builder.new(get_db(), @quality_report)
         result = get_db().command(:mapreduce => 'records',
                                   :map => measure.map_function,
                                   :reduce => "function(key, values){return values;}",
                                   :out => {:inline => true},
                                   :raw => true,
-                                  :query => {:medical_record_number => patient_id, :test_id => @parameter_values["test_id"]})
+                                  :query => {:medical_record_number => patient_id, :test_id => @quality_report["test_id"]})
 
         raise result['err'] if result['ok']!=1
         result['results'][0]['value']

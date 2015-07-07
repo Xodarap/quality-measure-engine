@@ -6,7 +6,7 @@ module QME
 
     # Builds Map and Reduce functions for a particular measure
     class Builder
-      attr_reader :id, :params
+      attr_reader :id
 
       # Utility class used to supply a binding to Erb
       class Context < OpenStruct
@@ -59,28 +59,30 @@ module QME
       # Create a new Builder
       # @param [Hash] measure_def a JSON hash of the measure, field values may contain Erb directives to inject the values of supplied parameters into the map function
       # @param [Hash] params a hash of parameter names (String or Symbol) and their values
-      def initialize(db, measure_def, params)
-        @id = measure_def['id']
-        @params = {}
+      def initialize(db, quality_report)
+        @quality_report = quality_report
+        @measure_def = quality_report.measure
+        @id = @measure_def['id']
         @db = db
 
         # normalize parameters hash to accept either symbol or string keys
-        params.each do |name, value|
-          @params[name.to_s] = value
-        end
-        @measure_def = measure_def
-        @measure_def.parameters ||= {}
-        @measure_def.parameters.each do |parameter, value|
-          if !@params.has_key?(parameter)
-            raise "No value supplied for measure parameter: #{parameter}"
-          end
-        end
+        # params.each do |name, value|
+        #   @params[name.to_s] = value
+        # end
+        # @measure_def.parameters ||= {}
+        # @measure_def.parameters.each do |parameter, value|
+        #   if !@params.has_key?(parameter)
+        #     raise "No value supplied for measure parameter: #{parameter}"
+        #   end
+        # end
         # if the map function is specified then replace any erb templates with their values
         # taken from the supplied params
         # always true for actual measures, not always true for unit tests
         if (@measure_def.map_fn)
           template = ERB.new(@measure_def.map_fn)
-          context = Context.new(@db, @params)
+          map_config = @quality_report.map_config
+          params = map_config.to_h.merge({effective_date: @quality_report.effective_date})
+          context = Context.new(@db, params)
           @measure_def.map_fn = template.result(context.get_binding)
         end
       end
@@ -96,13 +98,13 @@ module QME
       # map-reduce-utils.js
       # @return [String] the reduce function
       def finalize_function
-        reporting_period_start = Time.at(@params['effective_date']).prev_year.to_i
+        reporting_period_start = Time.at(@quality_report['effective_date']).prev_year.to_i
         reduce =
         "function (key, value) {
           var patient = value;
           patient.measure_id = \"#{@measure_def['id']}\";\n"
-        if @params['test_id'] && @params['test_id'].class==BSON::ObjectId
-          reduce += "  patient.test_id = new ObjectId(\"#{@params['test_id']}\");\n"
+        if @quality_report['test_id'] && @quality_report['test_id'].class==BSON::ObjectId
+          reduce += "  patient.test_id = new ObjectId(\"#{@quality_report['test_id']}\");\n"
         end
         if @measure_def.sub_id
           reduce += "  patient.sub_id = \"#{@measure_def.sub_id}\";\n"
@@ -111,7 +113,7 @@ module QME
           reduce += "  patient.nqf_id = \"#{@measure_def.nqf_id}\";\n"
         end
 
-        reduce += "patient.effective_date = #{@params['effective_date']};
+        reduce += "patient.effective_date = #{@quality_report['effective_date']};
                    if (patient.provider_performances) {
                      var tmp = [];
                      for(var i=0; i<patient.provider_performances.length; i++) {
@@ -120,11 +122,11 @@ module QME
                         // Early Overlap
                         ((value['start_date'] <= #{reporting_period_start} || value['start_date'] == null) && (value['end_date'] > #{reporting_period_start})) ||
                         // Late Overlap
-                        ((value['start_date'] < #{@params['effective_date']}) && (value['end_date'] >= #{@params['effective_date']} || value['end_date'] == null)) ||
+                        ((value['start_date'] < #{@quality_report['effective_date']}) && (value['end_date'] >= #{@quality_report['effective_date']} || value['end_date'] == null)) ||
                         // Full Overlap
-                        ((value['start_date'] <= #{reporting_period_start} || value['start_date'] == null) && (value['end_date'] >= #{@params['effective_date']} || value['end_date'] == null)) ||
+                        ((value['start_date'] <= #{reporting_period_start} || value['start_date'] == null) && (value['end_date'] >= #{@quality_report['effective_date']} || value['end_date'] == null)) ||
                         // Full Containment
-                        (value['start_date'] > #{reporting_period_start} && value['end_date'] < #{@params['effective_date']})
+                        (value['start_date'] > #{reporting_period_start} && value['end_date'] < #{@quality_report['effective_date']})
                        )
                        tmp.push(value);
                      }
