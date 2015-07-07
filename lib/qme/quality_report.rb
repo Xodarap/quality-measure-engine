@@ -117,15 +117,12 @@ module QME
         options[:asynchronous] = true
         if patients_cached?
           queued!
-          QME::QualityReport.enque_job(options,:rollup)
+          self.class.enque_job(options, :rollup)
         elsif calculation_queued_or_running?
-          staged!
-          options.merge!( {measure_id: self.measure_id, sub_id: self.sub_id, effective_date: self.effective_date })
-          Mongoid.default_session["rollup_buffer"].insert(options)
+          stage_rollup!(options)
         else
-          # queue the job for calculation
           queued!
-          QME::QualityReport.enque_job(options,:calculation)
+          self.class.enque_job(options, :calculation)
         end
       else
         mcj = QME::MapReduce::MeasureCalculationJob.new(options)
@@ -135,6 +132,12 @@ module QME
 
     def should_calculate?(options)
       !calculated? || options['recalculate']
+    end
+
+    def stage_rollup!(options)
+      staged!
+      options.merge!( {measure_id: self.measure_id, sub_id: self.sub_id, effective_date: self.effective_date })
+      Mongoid.default_session["rollup_buffer"].insert(options)
     end
 
     def patient_results
