@@ -231,7 +231,13 @@ module QME
 
     # make sure all filter id arrays are sorted
     def self.normalize_filters(filters)
-      filters.each {|key, value| value.sort_by! {|v| (v.is_a? Hash) ? "#{v}" : v} if value.is_a? Array} unless filters.nil?
+      unless filters.nil?
+        filters.each do |key, value|
+          if value.is_a? Array
+            value.sort_by! {|v| (v.is_a? Hash) ? "#{v}" : v}
+          end
+        end
+      end
     end
 
     protected
