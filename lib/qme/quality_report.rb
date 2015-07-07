@@ -59,13 +59,37 @@ module QME
     CMS_PAYER = 'CMS_PAYER'
 
 
+    # Accessors for the various status['state'] flags, similar API to
+    # ActiveRecord::Enum.
 
-    # Determines whether the quality report has been calculated for the given
-    # measure and parameters
-    # @return [true|false]
-    def calculated?
-      self.status["state"] == "completed"
+    def queued!
+      self.status['state'] = 'queued'
+      save
     end
+
+    def queued?
+      self.status['state'] == 'queued'
+    end
+
+    def staged!
+      self.status['state'] = 'stagged'
+      save
+    end
+
+    def staged?
+      self.status['state'] == 'stagged'
+    end
+
+    def completed!
+      self.status['state'] = 'completed'
+      save
+    end
+
+    def completed?
+      self.status['state'] == 'completed'
+    end
+
+    alias_method :calculated?, :completed?
 
     # Determines whether the patient mapping for the quality report has been
     # completed
@@ -89,18 +113,18 @@ module QME
 
       return self unless should_calculate?(options)
 
-      self.status["state"] = "queued"
       if (asynchronous)
         options[:asynchronous] = true
         if patients_cached?
+          queued!
           QME::QualityReport.enque_job(options,:rollup)
         elsif calculation_queued_or_running?
-          self.status["state"] = "stagged"
-          self.save
+          staged!
           options.merge!( {measure_id: self.measure_id, sub_id: self.sub_id, effective_date: self.effective_date })
           Mongoid.default_session["rollup_buffer"].insert(options)
         else
           # queue the job for calculation
+          queued!
           QME::QualityReport.enque_job(options,:calculation)
         end
       else
