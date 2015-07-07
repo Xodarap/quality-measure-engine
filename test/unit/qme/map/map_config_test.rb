@@ -8,4 +8,22 @@ class MapConfigTest < MiniTest::Unit::TestCase
     assert config.is_a? QME::MapReduce::MapConfig
   end
 
+  def test_configure
+    config = QME::MapReduce::MapConfig.configure({
+      short_circuit: false,
+      enable_rationale: true,
+      oid_dictionary: { key: 'value' },
+      erraneous_key: 'is ignored'
+    })
+
+    expected = QME::MapReduce::MapConfig.new(
+      false,
+      true,
+      false,
+      { key: 'value' }
+    )
+
+    assert_equal config, expected
+  end
+
 end

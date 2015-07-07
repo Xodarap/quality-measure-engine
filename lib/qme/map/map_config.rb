@@ -11,6 +11,16 @@ module QME
       def default_config
         new(false, false, false, {})
       end
+
+      def configure(params)
+        default_config.tap do |config|
+          params.each do |key, value|
+            if config.members.include? key
+              config[key] = value
+            end
+          end
+        end
+      end
     end
   end
 end
