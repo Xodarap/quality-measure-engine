@@ -31,7 +31,7 @@ module QME
           result = map.count_records_in_measure_groups
           @quality_report.update_attribute(:result, result)
           completed(completion_summary(result))
-          QME::QualityReport.queue_staged_rollups(@quality_report.measure_id, @quality_report.sub_id, @quality_report.effective_date)
+          @quality_report.queue_staged_rollups
         end
         @quality_report
       end
