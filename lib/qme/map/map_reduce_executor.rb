@@ -20,6 +20,7 @@ module QME
 
         @measure_id = measure_id
         @sub_id =sub_id
+        @start_time = Time.now.to_i
 
         @parameter_values = parameter_values
         q_filter = {hqmf_id: @measure_id,sub_id: @sub_id}
@@ -200,7 +201,7 @@ module QME
         agg_result = aggregate['result'].first
         agg_result.reject! {|k, v| k == '_id'} # get rid of the group id the Mongo forced us to use
         # result['exclusions'] += get_db['patient_cache'].find(base_query.merge({'value.manual_exclusion'=>true})).count
-        agg_result.merge!(execution_time: (Time.now.to_i - @parameter_values['start_time'].to_i)) if @parameter_values['start_time']
+        agg_result.merge!(execution_time: (Time.now.to_i - @start_time)) if @start_time
         agg_result.each_pair do |k,v|
           result[k]=v
         end

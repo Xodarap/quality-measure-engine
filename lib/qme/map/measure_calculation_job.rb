@@ -20,8 +20,7 @@ module QME
 
       def perform
         unless @quality_report.calculated?
-          mre_options = @options.merge('start_time' => Time.now.to_i)
-          map = QME::MapReduce::Executor.new(@quality_report.measure_id, @quality_report.sub_id, mre_options)
+          map = QME::MapReduce::Executor.new(@quality_report.measure_id, @quality_report.sub_id, @options)
           unless @quality_report.patients_cached?
             tick('Starting MapReduce')
             map.map_records_into_measure_groups(@options['prefilter'])
