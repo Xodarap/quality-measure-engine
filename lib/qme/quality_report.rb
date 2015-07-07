@@ -87,9 +87,7 @@ module QME
       options = {'quality_report_id' => self.id}
       options.merge! parameters || {}
 
-      if self.status["state"] == "completed" && !options["recalculate"]
-        return self
-      end
+      return self unless should_calculate?(options)
 
       self.status["state"] = "queued"
       if (asynchronous)
@@ -109,6 +107,10 @@ module QME
         mcj = QME::MapReduce::MeasureCalculationJob.new(options)
         mcj.perform
       end
+    end
+
+    def should_calculate?(options)
+      !calculated? || options['recalculate']
     end
 
     def patient_results
