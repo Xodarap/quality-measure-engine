@@ -72,12 +72,12 @@ module QME
     end
 
     def staged!
-      self.status['state'] = 'stagged'
+      self.status['state'] = 'staged'
       save
     end
 
     def staged?
-      self.status['state'] == 'stagged'
+      self.status['state'] == 'staged'
     end
 
     def completed!
@@ -101,7 +101,7 @@ module QME
     # Determines whether the patient mapping for the quality report has been
     # queued up by another quality report or if it is currently running
     def calculation_queued_or_running?
-      QME::QualityReport.where({measure_id: self.measure_id,sub_id:self.sub_id, effective_date: self.effective_date, test_id: self.test_id }).nin("status.state" =>["unknown","stagged"]).exists?
+      QME::QualityReport.where({measure_id: self.measure_id,sub_id:self.sub_id, effective_date: self.effective_date, test_id: self.test_id }).nin("status.state" =>["unknown","staged"]).exists?
     end
 
     # Kicks off a background job to calculate the measure
