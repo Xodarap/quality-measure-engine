@@ -1,6 +1,6 @@
 require 'test_helper'
 
-class MapCalculationJobTest < MiniTest::Unit::TestCase
+class MapCalculationJobTest < Minitest::Test
   include QME::DatabaseAccess
 
   def setup

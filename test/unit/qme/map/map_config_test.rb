@@ -1,6 +1,6 @@
 require 'test_helper'
 
-class MapConfigTest < MiniTest::Unit::TestCase
+class MapConfigTest < Minitest::Test
 
   def test_default_mapconfig
     config = QME::MapReduce::MapConfig.default_config

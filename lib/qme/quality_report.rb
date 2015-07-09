@@ -156,7 +156,7 @@ module QME
     end
 
     def patient_results
-     QME::PatientCache.where(patient_cache_matcher)
+      QME::PatientCache.where(patient_cache_matcher)
     end
 
     def measure
@@ -173,27 +173,27 @@ module QME
 
 
     def patient_cache_matcher
-      match = {'value.measure_id' => self.measure_id,
-               'value.sub_id'           => self.sub_id,
-               'value.effective_date'   => self.effective_date,
+      match = {'value.measure_id'       => measure_id,
+               'value.sub_id'           => sub_id,
+               'value.effective_date'   => effective_date,
                'value.test_id'          => test_id,
                'value.manual_exclusion' => {'$in' => [nil, false]}}
 
-      if(filters)
-        if (filters['races'] && filters['races'].size > 0)
+      if filters
+        if filters['races'].present?
           match['value.race.code'] = {'$in' => filters['races']}
         end
-        if (filters['ethnicities'] && filters['ethnicities'].size > 0)
+        if filters['ethnicities'].present?
           match['value.ethnicity.code'] = {'$in' => filters['ethnicities']}
         end
-        if (filters['genders'] && filters['genders'].size > 0)
+        if filters['genders'].present?
           match['value.gender'] = {'$in' => filters['genders']}
         end
-        if (filters['providers'] && filters['providers'].size > 0)
+        if filters['providers'].present?
           providers = filters['providers'].map { |pv| BSON::ObjectId.from_string(pv) }
           match['value.provider_performances.provider_id'] = {'$in' => providers}
         end
-        if (filters['languages'] && filters['languages'].size > 0)
+        if filters['languages'].present?
           match["value.languages"] = {'$in' => filters['languages']}
         end
       end

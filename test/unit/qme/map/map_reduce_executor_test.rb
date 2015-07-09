@@ -1,6 +1,6 @@
 require 'test_helper'
 
-class MapReduceExecutorTest < MiniTest::Unit::TestCase
+class MapReduceExecutorTest < Minitest::Test
   include QME::DatabaseAccess
 
   def setup

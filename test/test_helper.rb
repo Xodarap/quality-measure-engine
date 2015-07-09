@@ -5,7 +5,7 @@ require 'pry-nav'
 
 Mongoid.load!(File.join(File.dirname(__FILE__),"mongoid.yml"), :test)
 
-class MiniTest::Unit::TestCase
+class Minitest::Test
 
   def load_system_js
     Mongoid.default_session['system.js'].find.remove_all

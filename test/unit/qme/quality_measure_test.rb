@@ -1,6 +1,6 @@
 require 'test_helper'
 
-class QualityMeasureTest < MiniTest::Unit::TestCase
+class QualityMeasureTest < Minitest::Test
   include QME::DatabaseAccess
   def setup
 
