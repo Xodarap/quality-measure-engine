@@ -146,8 +146,13 @@ module QME
 
     def stage_rollup!(options)
       staged!
-      options.merge!( {measure_id: self.measure_id, sub_id: self.sub_id, effective_date: self.effective_date })
-      Mongoid.default_session["rollup_buffer"].insert(options)
+      rollup = {
+        measure_id: measure_id,
+        sub_id: sub_id,
+        effective_date: effective_date,
+        quality_report_id: id
+      }
+      Mongoid.default_session["rollup_buffer"].insert(rollup)
     end
 
     def patient_results
@@ -197,8 +202,8 @@ module QME
 
     def queue_staged_rollups
       rollups = Mongoid.default_session["rollup_buffer"].find({measure_id: measure_id, sub_id: sub_id, effective_date: effective_date})
-      rollups.each do |options|
-        qr = QME::QualityReport.find(options["quality_report_id"])
+      rollups.each do |rollup|
+        qr = QME::QualityReport.find(rollup["quality_report_id"])
         qr.enque_job(:rollup)
       end
       rollups.remove_all
