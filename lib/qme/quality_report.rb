@@ -196,13 +196,12 @@ module QME
     end
 
     def queue_staged_rollups
-     query = Mongoid.default_session["rollup_buffer"].find({measure_id: measure_id, sub_id: sub_id, effective_date: effective_date})
-     query.each do |options|
-        if QME::QualityReport.where("_id" => options["quality_report_id"]).count == 1
-           QME::QualityReport.enque_job(options,:rollup)
-        end
-     end
-     query.remove_all
+      rollups = Mongoid.default_session["rollup_buffer"].find({measure_id: measure_id, sub_id: sub_id, effective_date: effective_date})
+      rollups.each do |options|
+        qr = QME::QualityReport.find(options["quality_report_id"])
+        qr.enque_job(:rollup)
+      end
+      rollups.remove_all
     end
 
     # Removes the cached results for the patient with the supplied id and
@@ -264,10 +263,6 @@ module QME
      # sematics of the older version to highlight the issue.
     def initialize(attrs = nil)
       super(attrs)
-    end
-
-    def self.enque_job(options,queue)
-      Delayed::Job.enqueue(QME::MapReduce::MeasureCalculationJob.new(options), {queue: queue})
     end
   end
 end
