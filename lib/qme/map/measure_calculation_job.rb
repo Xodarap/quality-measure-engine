@@ -78,16 +78,12 @@ module QME
         if job.nil?
           # If we can't find the job, we assume that it is complete
           :complete
+        elsif job.locked_at.nil?
+          :queued
+        elsif job.failed?
+          :failed
         else
-          if job.locked_at.nil?
-            :queued
-          else
-            if job.failed?
-              :failed
-            else
-              :running
-            end
-          end
+          :running
         end
       end
 
