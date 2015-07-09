@@ -59,6 +59,7 @@ module QME
     PAYER   = 'PAYER'
     CMS_PAYER = 'CMS_PAYER'
 
+    after_create :configure
 
     # Accessors for the various status['state'] flags, similar API to
     # ActiveRecord::Enum.
