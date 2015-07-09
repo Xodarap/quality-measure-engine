@@ -240,7 +240,7 @@ module QME
       # that the record belongs to, such as numerator, etc.
       def map_records_into_measure_groups(prefilter={})
         measure = Builder.new(get_db(), @quality_report.measure, @quality_report.map_config, @quality_report['test_id'])
-        get_db().command(mapreduce: 'records',
+        @quality_report.mongo_session.command(mapreduce: 'records',
                          map: measure.map_function,
                          reduce: "function(key, values){return values;}",
                          out: {reduce: 'patient_cache', sharded: true},
@@ -263,7 +263,7 @@ module QME
       # result is returned directly.
       def get_patient_result(patient_id)
         measure = Builder.new(get_db(), @quality_report.measure, @quality_report.map_config, @quality_report['test_id'])
-        result = get_db().command(:mapreduce => 'records',
+        result = @quality_report.mongo_session.command(:mapreduce => 'records',
                                   :map => measure.map_function,
                                   :reduce => "function(key, values){return values;}",
                                   :out => {:inline => true},
