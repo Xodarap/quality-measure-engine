@@ -80,7 +80,7 @@ module QME
       #Calculate all of the supoplemental data elements
       def calculate_supplemental_data_elements
 
-        match = {'value.measure_id' => @measure_id,
+        match = {'value.measure_id'       => @measure_id,
                  'value.sub_id'           => @sub_id,
                  'value.effective_date'   => @quality_report['effective_date'],
                  'value.test_id'          => @quality_report['test_id'],
@@ -239,7 +239,7 @@ module QME
       # in the patient_cache collection. These documents will state the measure groups
       # that the record belongs to, such as numerator, etc.
       def map_records_into_measure_groups(prefilter={})
-        measure = Builder.new(get_db(), @quality_report)
+        measure = Builder.new(get_db(), @quality_report.measure, @quality_report.map_config, @quality_report['test_id'])
         get_db().command(mapreduce: 'records',
                          map: measure.map_function,
                          reduce: "function(key, values){return values;}",
@@ -262,7 +262,7 @@ module QME
       # This will *not* create a document in the patient_cache collection, instead the
       # result is returned directly.
       def get_patient_result(patient_id)
-        measure = Builder.new(get_db(), @quality_report)
+        measure = Builder.new(get_db(), @quality_report.measure, @quality_report.map_config, @quality_report['test_id'])
         result = get_db().command(:mapreduce => 'records',
                                   :map => measure.map_function,
                                   :reduce => "function(key, values){return values;}",

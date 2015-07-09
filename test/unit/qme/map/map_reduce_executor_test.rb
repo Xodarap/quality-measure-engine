@@ -12,7 +12,8 @@ class MapReduceExecutorTest < Minitest::Test
     collection_fixtures(get_db(), 'bundles')
     options = {'measure_id' => "2E679CD2-3FEC-4A75-A75A-61403E5EFEE8",
                'effective_date' => Time.gm(2011, 1, 15).to_i}
-    @quality_report =QME::QualityReport.find_or_create_by(options)
+    @quality_report = QME::QualityReport.find_or_create_by(options)
+    @quality_report.configure
     load_system_js
   end
 
@@ -112,7 +113,6 @@ class MapReduceExecutorTest < Minitest::Test
   end
 
   def test_get_patient_result_with_bundle_id
-    skip
     measure_id = "2E679CD2-3FEC-4A75-A75A-61403E5EFEE8"
     bundle_id = get_db()['bundles'].find.first
     get_db()['measures'].find('id' => measure_id).update(:$set => {'bundle_id' => bundle_id})

@@ -4,12 +4,13 @@ module QME
       :enable_logging,
       :enable_rationale,
       :short_circuit,
-      :oid_dictionary
+      :oid_dictionary,
+      :effective_date
     )
 
     class << MapConfig
       def default_config
-        new(false, false, false, {})
+        new(false, false, false, {}, nil)
       end
 
       def configure(params)

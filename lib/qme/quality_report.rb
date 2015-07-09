@@ -106,7 +106,8 @@ module QME
       QME::QualityReport.where({measure_id: self.measure_id,sub_id:self.sub_id, effective_date: self.effective_date, test_id: self.test_id }).nin("status.state" =>["unknown","staged"]).exists?
     end
 
-    def configure(params)
+    def configure(params = {})
+      params.merge! effective_date: effective_date
       @map_config = QME::MapReduce::MapConfig.configure(params)
     end
 
