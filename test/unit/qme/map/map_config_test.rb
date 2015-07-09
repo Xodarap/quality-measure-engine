@@ -16,14 +16,15 @@ class MapConfigTest < Minitest::Test
       erraneous_key: 'is ignored'
     })
 
-    expected = QME::MapReduce::MapConfig.new(
-      false,
-      true,
-      false,
-      { key: 'value' }
-    )
+    expected = {
+      'enable_logging' => false,
+      'enable_rationale' => true,
+      'short_circuit' => false,
+      'oid_dictionary' => { key: 'value' },
+      'effective_date' => nil
+    }
 
-    assert_equal config, expected
+    assert_equal config.attributes.except('_id'), expected
   end
 
 end

@@ -37,6 +37,7 @@ module QME
     field :filters, type: Hash
     field :prefilter, type: Hash
     embeds_one :result, class_name: "QME::QualityReportResult", inverse_of: :quality_report
+    embeds_one :map_config, class_name: 'QME::MapReduce::MapConfig'
     index "measure_id" => 1
     index "sub_id" => 1
     index "filters.provider_performances.provider_id" => 1
@@ -106,11 +107,7 @@ module QME
 
     def configure(params = {})
       params.merge! effective_date: effective_date
-      @map_config = QME::MapReduce::MapConfig.configure(params)
-    end
-
-    def map_config
-      @map_config || configure
+      self.map_config = QME::MapReduce::MapConfig.configure(params)
     end
 
     # Kicks off a background job to calculate the measure

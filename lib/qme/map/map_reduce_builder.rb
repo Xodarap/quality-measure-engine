@@ -14,7 +14,7 @@ module QME
         # @param [Hash] vars a hash of parameter names (String) and values (Object). Each
         # entry is added as an accessor of the new Context
         def initialize(db, config)
-          super(config.to_h)
+          super(config.attributes)
           @db = db
         end
 
