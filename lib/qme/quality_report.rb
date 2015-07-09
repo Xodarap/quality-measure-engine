@@ -58,8 +58,6 @@ module QME
     PAYER   = 'PAYER'
     CMS_PAYER = 'CMS_PAYER'
 
-    attr_reader :map_config
-
 
     # Accessors for the various status['state'] flags, similar API to
     # ActiveRecord::Enum.
@@ -109,6 +107,10 @@ module QME
     def configure(params = {})
       params.merge! effective_date: effective_date
       @map_config = QME::MapReduce::MapConfig.configure(params)
+    end
+
+    def map_config
+      @map_config || configure
     end
 
     # Kicks off a background job to calculate the measure
