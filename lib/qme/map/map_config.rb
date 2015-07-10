@@ -12,26 +12,22 @@ module QME
 
       embedded_in :quality_report
 
-      class << self
-        def default_config
-          new({
-            enable_logging: false,
-            enable_rationale: false,
-            short_circuit: false,
-            oid_dictionary: {},
-            effective_date: nil
-          })
-        end
-
-        def configure(params)
-          default_config.tap do |config|
-            params.each do |key, value|
-              if config.attribute_names.include? key.to_s
-                config[key] = value
-              end
-            end
+      def configure(params)
+        params.each do |key, value|
+          if attribute_names.include? key.to_s
+            self[key] = value unless value.nil?
           end
         end
+      end
+
+      def self.default_config
+        new(
+          enable_logging: false,
+          enable_rationale: false,
+          short_circuit: false,
+          oid_dictionary: {},
+          effective_date: nil
+        )
       end
 
     end

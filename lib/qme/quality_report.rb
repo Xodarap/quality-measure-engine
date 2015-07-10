@@ -106,22 +106,27 @@ module QME
       QME::QualityReport.where(measure_id: measure_id, sub_id: sub_id, effective_date: effective_date, test_id: test_id).nin("status.state" =>["unknown","staged"]).exists?
     end
 
-    def configure(params = {})
-      params.merge! effective_date: effective_date
-      self.map_config = QME::MapReduce::MapConfig.configure(params)
+    def config
+      map_config ||= QME::MapReduce::MapConfig.default_config
     end
 
-    def calculate_now(params)
-      configure(params)
+    def configure(params = {})
+      params[:effective_date] = effective_date
+      if measure.present?
+        oid_dictionary = OidHelper.generate_oid_dictionary(measure['oids'])
+        params[:oid_dictionary] = oid_dictionary
+      end
+      config.configure(params)
+    end
+
+    def calculate_now
       queued!
       QME::MapReduce::MeasureCalculationJob.new(id).perform
     end
 
     # Kicks off a background job to calculate the measure
     # @return a unique id for the measure calculation job
-    def calculate(params)
-      configure(params)
-
+    def calculate
       if patients_cached?
         enque_job(:rollup)
       elsif calculation_queued_or_running?
