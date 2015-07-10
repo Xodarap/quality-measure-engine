@@ -14,7 +14,7 @@ module QME
           @db = db
         end
 
-        def get_binding
+        def get_binding # rubocop:disable Style/AccessorMethodName
           binding
         end
 
