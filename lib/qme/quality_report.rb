@@ -96,14 +96,14 @@ module QME
     # Determines whether the patient mapping for the quality report has been
     # completed
     def patients_cached?
-      QME::QualityReport.where({measure_id: self.measure_id,sub_id:self.sub_id, effective_date: self.effective_date, test_id: self.test_id, "status.state" => "completed" }).exists?
+      QME::QualityReport.where(measure_id: measure_id, sub_id: sub_id, effective_date: effective_date, test_id: test_id, "status.state" => "completed").exists?
     end
 
 
     # Determines whether the patient mapping for the quality report has been
     # queued up by another quality report or if it is currently running
     def calculation_queued_or_running?
-      QME::QualityReport.where({measure_id: self.measure_id,sub_id:self.sub_id, effective_date: self.effective_date, test_id: self.test_id }).nin("status.state" =>["unknown","staged"]).exists?
+      QME::QualityReport.where(measure_id: measure_id, sub_id: sub_id, effective_date: effective_date, test_id: test_id).nin("status.state" =>["unknown","staged"]).exists?
     end
 
     def configure(params = {})
@@ -133,7 +133,8 @@ module QME
 
     def enque_job(queue)
       queued!
-      Delayed::Job.enqueue(QME::MapReduce::MeasureCalculationJob.new(id), {queue: queue})
+      job = QME::MapReduce::MeasureCalculationJob.new(id)
+      Delayed::Job.enqueue(job, { queue: queue })
     end
 
     def stage_rollup!
@@ -152,7 +153,7 @@ module QME
     end
 
     def measure
-      QME::QualityMeasure.where({"hqmf_id"=>self.measure_id, "sub_id" => self.sub_id}).first
+      QME::QualityMeasure.where(hqmf_id: measure_id, sub_id: sub_id).first
     end
 
     def patient_result(patient_id = nil)
@@ -193,7 +194,10 @@ module QME
     end
 
     def queue_staged_rollups
-      rollups = mongo_session["rollup_buffer"].find({measure_id: measure_id, sub_id: sub_id, effective_date: effective_date})
+      query = { measure_id: measure_id,
+                sub_id: sub_id,
+                effective_date: effective_date }
+      rollups = mongo_session["rollup_buffer"].find(query)
       rollups.each do |rollup|
         qr = QME::QualityReport.find(rollup["quality_report_id"])
         qr.enque_job(:rollup)
@@ -227,15 +231,15 @@ module QME
 
       # remove the query totals so they will be recalculated using the new results for
       # the modified patient
-      self.destroy_all
+      destroy_all
     end
 
     def self.find_or_create(measure_id, sub_id, parameter_values)
       @parameter_values = parameter_values
-      @parameter_values[:filters] = self.normalize_filters(@parameter_values[:filters])
-      query = {measure_id: measure_id, sub_id: sub_id}
+      @parameter_values[:filters] = normalize_filters(@parameter_values[:filters])
+      query = { measure_id: measure_id, sub_id: sub_id }
       query.merge! @parameter_values
-      self.find_or_create_by(query)
+      find_or_create_by(query)
     end
 
     # make sure all filter id arrays are sorted
