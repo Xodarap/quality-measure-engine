@@ -234,11 +234,10 @@ module QME
       destroy_all
     end
 
-    def self.find_or_create(measure_id, sub_id, parameter_values)
-      @parameter_values = parameter_values
-      @parameter_values[:filters] = normalize_filters(@parameter_values[:filters])
+    def self.find_or_create(measure_id, sub_id, params)
       query = { measure_id: measure_id, sub_id: sub_id }
-      query.merge! @parameter_values
+      params[:filters] = normalize_filters(params[:filters])
+      query.merge! params
       find_or_create_by(query)
     end
 
