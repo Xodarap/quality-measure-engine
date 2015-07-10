@@ -43,13 +43,12 @@ module QME
       end
 
       # Create a new Builder
-      def initialize(db, measure, map_config = MapConfig.default_config, test_id = nil)
+      def initialize(db, measure, map_config = MapConfig.default_config)
         @map_config = map_config
         @effective_date = map_config.effective_date
         @measure = measure
         @id = @measure['id']
         @db = db
-        @test_id = test_id
 
         # normalize parameters hash to accept either symbol or string keys
         # params.each do |name, value|
@@ -87,9 +86,6 @@ module QME
         "function (key, value) {
           var patient = value;
           patient.measure_id = \"#{@measure['id']}\";\n"
-        if @test_id.class == BSON::ObjectId
-          reduce += "  patient.test_id = new ObjectId(\"#{@test_id}\");\n"
-        end
         if @measure.sub_id
           reduce += "  patient.sub_id = \"#{@measure.sub_id}\";\n"
         end

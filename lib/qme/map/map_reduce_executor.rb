@@ -15,7 +15,7 @@ module QME
       # Create a new Executor for a specific measure, effective date and patient population.
       # @param [String] measure_id the measure identifier
       # @param [String] sub_id the measure sub-identifier or null if the measure is single numerator
-      # @param [Hash] parameter_values a hash that may contain the following keys: 'effective_date' the measurement period end date, 'test_id' an identifier for a specific set of patients
+      # @param [Hash] parameter_values a hash that may contain the following keys: 'effective_date' the measurement period end date
       def initialize(quality_report)
 
         @quality_report = quality_report
@@ -41,7 +41,6 @@ module QME
         match = {'value.measure_id'       => @measure_id,
                  'value.sub_id'           => @sub_id,
                  'value.effective_date'   => @quality_report['effective_date'],
-                 'value.test_id'          => @quality_report['test_id'],
                  'value.manual_exclusion' => {'$in' => [nil, false]}}
 
         if(filters)
@@ -83,7 +82,6 @@ module QME
         match = {'value.measure_id'       => @measure_id,
                  'value.sub_id'           => @sub_id,
                  'value.effective_date'   => @quality_report['effective_date'],
-                 'value.test_id'          => @quality_report['test_id'],
                  'value.manual_exclusion' => {'$in' => [nil, false]}}
 
         keys = @measure_def.population_ids.keys - [QME::QualityReport::OBSERVATION, "stratification"]
@@ -239,7 +237,7 @@ module QME
       # in the patient_cache collection. These documents will state the measure groups
       # that the record belongs to, such as numerator, etc.
       def map_records_into_measure_groups(prefilter={})
-        measure = Builder.new(get_db(), @quality_report.measure, @quality_report.map_config, @quality_report['test_id'])
+        measure = Builder.new(get_db(), @quality_report.measure, @quality_report.map_config)
         @quality_report.mongo_session.command(mapreduce: 'records',
                          map: measure.map_function,
                          reduce: "function(key, values){return values;}",
@@ -253,8 +251,7 @@ module QME
       # This will create a document in the patient_cache collection. This document
       # will state the measure groups that the record belongs to, such as numerator, etc.
       def map_record_into_measure_groups(patient_id)
-        prefilter = { medical_record_number: patient_id,
-                      test_id: @quality_report["test_id"] }
+        prefilter = { medical_record_number: patient_id }
         map_records_into_measure_groups(prefilter)
       end
 
@@ -262,13 +259,13 @@ module QME
       # This will *not* create a document in the patient_cache collection, instead the
       # result is returned directly.
       def get_patient_result(patient_id)
-        measure = Builder.new(get_db(), @quality_report.measure, @quality_report.map_config, @quality_report['test_id'])
+        measure = Builder.new(get_db(), @quality_report.measure, @quality_report.map_config)
         result = @quality_report.mongo_session.command(:mapreduce => 'records',
                                   :map => measure.map_function,
                                   :reduce => "function(key, values){return values;}",
                                   :out => {:inline => true},
                                   :raw => true,
-                                  :query => {:medical_record_number => patient_id, :test_id => @quality_report["test_id"]})
+                                  :query => {:medical_record_number => patient_id})
 
         raise result['err'] if result['ok']!=1
         result['results'][0]['value']

@@ -32,7 +32,6 @@ module QME
     field :status, type: Hash, default: {"state" => "unknown", "log" => []}
     field :measure_id, type: String
     field :sub_id, type: String
-    field :test_id
     field :effective_date, type: Integer
     field :filters, type: Hash
     field :prefilter, type: Hash
@@ -96,14 +95,14 @@ module QME
     # Determines whether the patient mapping for the quality report has been
     # completed
     def patients_cached?
-      QME::QualityReport.where(measure_id: measure_id, sub_id: sub_id, effective_date: effective_date, test_id: test_id, "status.state" => "completed").exists?
+      QME::QualityReport.where(measure_id: measure_id, sub_id: sub_id, effective_date: effective_date, "status.state" => "completed").exists?
     end
 
 
     # Determines whether the patient mapping for the quality report has been
     # queued up by another quality report or if it is currently running
     def calculation_queued_or_running?
-      QME::QualityReport.where(measure_id: measure_id, sub_id: sub_id, effective_date: effective_date, test_id: test_id).nin("status.state" =>["unknown","staged"]).exists?
+      QME::QualityReport.where(measure_id: measure_id, sub_id: sub_id, effective_date: effective_date).nin("status.state" =>["unknown","staged"]).exists?
     end
 
     def config
@@ -174,7 +173,6 @@ module QME
       match = {'value.measure_id'       => measure_id,
                'value.sub_id'           => sub_id,
                'value.effective_date'   => effective_date,
-               'value.test_id'          => test_id,
                'value.manual_exclusion' => {'$in' => [nil, false]}}
 
       if filters
@@ -224,12 +222,12 @@ module QME
       if sample_patient
         cached_results = QME::PatientCache.where({'value.patient_id' => sample_patient['value']['patient_id']})
 
-        # for each cached result (a combination of measure_id, sub_id, effective_date and test_id)
+        # for each cached result (a combination of measure_id, sub_id, and effective_date)
         cached_results.each do |measure|
           # recalculate patient_cache value for modified patient
           value = measure['value']
           map = QME::MapReduce::Executor.new(value['measure_id'], value['sub_id'],
-            'effective_date' => value['effective_date'], 'test_id' => value['test_id'])
+            'effective_date' => value['effective_date'])
           map.map_record_into_measure_groups(id)
         end
       end
