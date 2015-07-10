@@ -153,7 +153,7 @@ module QME
         effective_date: effective_date,
         quality_report_id: id
       }
-      Mongoid.default_session["rollup_buffer"].insert(rollup)
+      mongo_session["rollup_buffer"].insert(rollup)
     end
 
     def patient_results
@@ -202,7 +202,7 @@ module QME
     end
 
     def queue_staged_rollups
-      rollups = Mongoid.default_session["rollup_buffer"].find({measure_id: measure_id, sub_id: sub_id, effective_date: effective_date})
+      rollups = mongo_session["rollup_buffer"].find({measure_id: measure_id, sub_id: sub_id, effective_date: effective_date})
       rollups.each do |rollup|
         qr = QME::QualityReport.find(rollup["quality_report_id"])
         qr.enque_job(:rollup)
