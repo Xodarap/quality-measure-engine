@@ -45,23 +45,23 @@ module QME
                  'value.manual_exclusion' => {'$in' => [nil, false]}}
 
         if(filters)
-          if (filters['races'] && filters['races'].size > 0)
+          if (filters['races'].present?)
             match['value.race.code'] = {'$in' => filters['races']}
           end
-          if (filters['ethnicities'] && filters['ethnicities'].size > 0)
+          if (filters['ethnicities'].present?)
             match['value.ethnicity.code'] = {'$in' => filters['ethnicities']}
           end
-          if (filters['genders'] && filters['genders'].size > 0)
+          if (filters['genders'].present?)
             match['value.gender'] = {'$in' => filters['genders']}
           end
-          if (filters['providers'] && filters['providers'].size > 0)
+          if (filters['providers'].present?)
             providers = filters['providers'].map { |pv| {'providers' => BSON::ObjectId.from_string(pv) } }
-            pipeline.concat [{'$project' => {'value' => 1, 'providers' => "$value.provider_performances.provider_id"}}, 
-                             {'$unwind' => '$providers'}, 
+            pipeline.concat [{'$project' => {'value' => 1, 'providers' => "$value.provider_performances.provider_id"}},
+                             {'$unwind' => '$providers'},
                              {'$match' => {'$or' => providers}},
                              {'$group' => {"_id" => "$_id", "value" => {"$first" => "$value"}}}]
           end
-          if (filters['languages'] && filters['languages'].size > 0)
+          if (filters['languages'].present?)
             languages = filters['languages'].map { |l| {'languages' => l } }
             pipeline.concat  [{'$project' => {'value' => 1, 'languages' => "$value.languages"}},
                               {'$unwind' => "$languages"},
