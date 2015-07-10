@@ -107,13 +107,13 @@ class QualityReportTest < Minitest::Test
     assert !qr.calculation_queued_or_running?
     assert !qr2.calculation_queued_or_running?
 
-    qr.calculate({"oid_dictionary"=>{}},true)
+    qr.calculate
 
     assert qr.calculation_queued_or_running?
     assert qr2.calculation_queued_or_running?
 
     assert_equal 0, Mongoid.default_session["rollup_buffer"].find({}).count
-    qr2.calculate({"oid_dictionary"=>{}},true)
+    qr2.calculate
     assert_equal 1, Mongoid.default_session["rollup_buffer"].find({}).count
 
 

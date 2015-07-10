@@ -10,7 +10,7 @@ module QME
       field :oid_dictionary
       field :effective_date
 
-      embedded_in :quality_report
+      embedded_in :quality_report, class_name: 'QME::MapReduce::QualityReport'
 
       def configure(params)
         params.each do |key, value|
@@ -18,6 +18,7 @@ module QME
             self[key] = value unless value.nil?
           end
         end
+        self
       end
 
       def self.default_config

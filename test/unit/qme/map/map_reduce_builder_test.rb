@@ -6,7 +6,8 @@ class MapReduceBuilderTest < Minitest::Test
   def setup
     collection_fixtures(get_db(), 'measures')
     @measure = QME::QualityMeasure.where({"nqf_id" => '0043'}).first
-    @map_config = QME::MapReduce::MapConfig.configure(effective_date: Time.gm(2010, 9, 19).to_i)
+    config = { effective_date: Time.gm(2010, 9, 19).to_i }
+    @map_config = QME::MapReduce::MapConfig.default_config.configure(config)
     load_system_js
   end
 

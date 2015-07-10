@@ -105,17 +105,14 @@ module QME
       QME::QualityReport.where(measure_id: measure_id, sub_id: sub_id, effective_date: effective_date).nin("status.state" =>["unknown","staged"]).exists?
     end
 
-    def config
-      map_config ||= QME::MapReduce::MapConfig.default_config
-    end
-
     def configure(params = {})
+      config = map_config || QME::MapReduce::MapConfig.default_config
       params[:effective_date] = effective_date
       if measure.present?
         oid_dictionary = OidHelper.generate_oid_dictionary(measure['oids'])
         params[:oid_dictionary] = oid_dictionary
       end
-      config.configure(params)
+      self.map_config = config.configure(params)
     end
 
     def calculate_now

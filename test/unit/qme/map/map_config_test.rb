@@ -9,7 +9,8 @@ class MapConfigTest < Minitest::Test
   end
 
   def test_configure
-    config = QME::MapReduce::MapConfig.configure({
+    config = QME::MapReduce::MapConfig.default_config
+    new_config = config.configure({
       short_circuit: false,
       enable_rationale: true,
       oid_dictionary: { key: 'value' },
@@ -24,7 +25,7 @@ class MapConfigTest < Minitest::Test
       'effective_date' => nil
     }
 
-    assert_equal config.attributes.except('_id'), expected
+    assert_equal new_config.attributes.except('_id'), expected
   end
 
 end
