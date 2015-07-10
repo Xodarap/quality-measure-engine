@@ -1,5 +1,4 @@
 module QME
-
   class QualityReportResult
     include Mongoid::Document
     include Mongoid::Timestamps
@@ -15,12 +14,12 @@ module QME
     field :OBSERV, type: Float
     field :supplemental_data, type: Hash
 
-    embedded_in :quality_report, inverse_of: :result
+    embedded_in :quality_report
   end
+
   # A class that allows you to create and obtain the results of running a
   # quality measure against a set of patient records.
   class QualityReport
-
     include Mongoid::Document
     include Mongoid::Timestamps
     include Mongoid::Attributes::Dynamic
@@ -29,17 +28,17 @@ module QME
     field :nqf_id, type: String
     field :npi, type: String
     field :calculation_time, type: Time
-    field :status, type: Hash, default: {"state" => "unknown", "log" => []}
+    field :status, type: Hash, default: { 'state' => 'unknown', 'log' => [] }
     field :measure_id, type: String
     field :sub_id, type: String
     field :effective_date, type: Integer
     field :filters, type: Hash
     field :prefilter, type: Hash
-    embeds_one :result, class_name: "QME::QualityReportResult", inverse_of: :quality_report
+    embeds_one :result, class_name: 'QME::QualityReportResult'
     embeds_one :map_config, class_name: 'QME::MapReduce::MapConfig'
-    index "measure_id" => 1
-    index "sub_id" => 1
-    index "filters.provider_performances.provider_id" => 1
+    index 'measure_id' => 1
+    index 'sub_id' => 1
+    index 'filters.provider_performances.provider_id' => 1
 
     POPULATION = 'IPP'
     DENOMINATOR = 'DENOM'
@@ -53,7 +52,7 @@ module QME
 
     RACE = 'RACE'
     ETHNICITY = 'ETHNICITY'
-    SEX ='SEX'
+    SEX = 'SEX'
     POSTAL_CODE = 'POSTAL_CODE'
     PAYER   = 'PAYER'
     CMS_PAYER = 'CMS_PAYER'
@@ -64,30 +63,30 @@ module QME
     # ActiveRecord::Enum.
 
     def queued!
-      self.status['state'] = 'queued'
+      status['state'] = 'queued'
       save
     end
 
     def queued?
-      self.status['state'] == 'queued'
+      status['state'] == 'queued'
     end
 
     def staged!
-      self.status['state'] = 'staged'
+      status['state'] = 'staged'
       save
     end
 
     def staged?
-      self.status['state'] == 'staged'
+      status['state'] == 'staged'
     end
 
     def completed!
-      self.status['state'] = 'completed'
+      status['state'] = 'completed'
       save
     end
 
     def completed?
-      self.status['state'] == 'completed'
+      status['state'] == 'completed'
     end
 
     alias_method :calculated?, :completed?
@@ -95,14 +94,13 @@ module QME
     # Determines whether the patient mapping for the quality report has been
     # completed
     def patients_cached?
-      QME::QualityReport.where(measure_id: measure_id, sub_id: sub_id, effective_date: effective_date, "status.state" => "completed").exists?
+      QME::QualityReport.where(measure_id: measure_id, sub_id: sub_id, effective_date: effective_date, 'status.state' => 'completed').exists?
     end
-
 
     # Determines whether the patient mapping for the quality report has been
     # queued up by another quality report or if it is currently running
     def calculation_queued_or_running?
-      QME::QualityReport.where(measure_id: measure_id, sub_id: sub_id, effective_date: effective_date).nin("status.state" =>["unknown","staged"]).exists?
+      QME::QualityReport.where(measure_id: measure_id, sub_id: sub_id, effective_date: effective_date).nin('status.state' => ['unknown', 'staged']).exists?
     end
 
     def configure(params = {})
@@ -135,7 +133,7 @@ module QME
     def enque_job(queue)
       queued!
       job = QME::MapReduce::MeasureCalculationJob.new(id)
-      Delayed::Job.enqueue(job, { queue: queue })
+      Delayed::Job.enqueue(job, queue: queue)
     end
 
     def stage_rollup!
@@ -146,7 +144,7 @@ module QME
         effective_date: effective_date,
         quality_report_id: id
       }
-      mongo_session["rollup_buffer"].insert(rollup)
+      mongo_session['rollup_buffer'].insert(rollup)
     end
 
     def patient_results
@@ -159,35 +157,32 @@ module QME
 
     def patient_result(patient_id = nil)
       query = patient_cache_matcher
-      if patient_id
-        query['value.medical_record_id'] = patient_id
-      end
-      QME::PatientCache.where(query).first()
+      query['value.medical_record_id'] = patient_id if patient_id.present?
+      QME::PatientCache.where(query).first
     end
 
-
     def patient_cache_matcher
-      match = {'value.measure_id'       => measure_id,
-               'value.sub_id'           => sub_id,
-               'value.effective_date'   => effective_date,
-               'value.manual_exclusion' => {'$in' => [nil, false]}}
+      match = { 'value.measure_id'       => measure_id,
+                'value.sub_id'           => sub_id,
+                'value.effective_date'   => effective_date,
+                'value.manual_exclusion' => { '$in' => [nil, false] } }
 
       if filters
         if filters['races'].present?
-          match['value.race.code'] = {'$in' => filters['races']}
+          match['value.race.code'] = { '$in' => filters['races'] }
         end
         if filters['ethnicities'].present?
-          match['value.ethnicity.code'] = {'$in' => filters['ethnicities']}
+          match['value.ethnicity.code'] = { '$in' => filters['ethnicities'] }
         end
         if filters['genders'].present?
-          match['value.gender'] = {'$in' => filters['genders']}
+          match['value.gender'] = { '$in' => filters['genders'] }
         end
         if filters['providers'].present?
           providers = filters['providers'].map { |pv| BSON::ObjectId.from_string(pv) }
-          match['value.provider_performances.provider_id'] = {'$in' => providers}
+          match['value.provider_performances.provider_id'] = { '$in' => providers }
         end
         if filters['languages'].present?
-          match["value.languages"] = {'$in' => filters['languages']}
+          match['value.languages'] = { '$in' => filters['languages'] }
         end
       end
       match
@@ -197,9 +192,9 @@ module QME
       query = { measure_id: measure_id,
                 sub_id: sub_id,
                 effective_date: effective_date }
-      rollups = mongo_session["rollup_buffer"].find(query)
+      rollups = mongo_session['rollup_buffer'].find(query)
       rollups.each do |rollup|
-        qr = QME::QualityReport.find(rollup["quality_report_id"])
+        qr = QME::QualityReport.find(rollup['quality_report_id'])
         qr.enque_job(:rollup)
       end
       rollups.remove_all
@@ -208,29 +203,31 @@ module QME
     # Removes the cached results for the patient with the supplied id and
     # recalculates as necessary
     def self.update_patient_results(id)
-      # TODO: need to wait for any outstanding calculations to complete and then prevent
-      # any new ones from starting until we are done.
+      # TODO: need to wait for any outstanding calculations to complete and
+      # then prevent any new ones from starting until we are done.
 
       # drop any cached measure result calculations for the modified patient
-     QME::PatientCache.where('value.medical_record_id' => id).destroy()
+      QME::PatientCache.where('value.medical_record_id' => id).destroy
 
       # get a list of cached measure results for a single patient
       sample_patient = QME::PatientCache.where({}).first
       if sample_patient
-        cached_results = QME::PatientCache.where({'value.patient_id' => sample_patient['value']['patient_id']})
+        cached_results = QME::PatientCache.where('value.patient_id' => sample_patient['value']['patient_id'])
 
         # for each cached result (a combination of measure_id, sub_id, and effective_date)
         cached_results.each do |measure|
           # recalculate patient_cache value for modified patient
           value = measure['value']
-          map = QME::MapReduce::Executor.new(value['measure_id'], value['sub_id'],
-            'effective_date' => value['effective_date'])
+          map = QME::MapReduce::Executor.new(
+            value['measure_id'], value['sub_id'],
+            'effective_date' => value['effective_date']
+          )
           map.map_record_into_measure_groups(id)
         end
       end
 
-      # remove the query totals so they will be recalculated using the new results for
-      # the modified patient
+      # remove the query totals so they will be recalculated using the new
+      # results for the modified patient
       destroy_all
     end
 
@@ -244,9 +241,9 @@ module QME
     # make sure all filter id arrays are sorted
     def self.normalize_filters(filters)
       unless filters.nil?
-        filters.each do |key, value|
+        filters.each do |_, value|
           if value.is_a? Array
-            value.sort_by! {|v| (v.is_a? Hash) ? "#{v}" : v}
+            value.sort_by! { |v| (v.is_a? Hash) ? "#{v}" : v }
           end
         end
       end
@@ -254,13 +251,15 @@ module QME
 
     protected
 
-     # In the older version of QME QualityReport was not treated as a persisted object. As
-     # a result anytime you wanted to get the cached results for a calculation you would create
-     # a new QR object which would then go to the db and see if the calculation was performed or
-     # not yet and then return the results.  Now that QR objects are persisted you need to go through
-     # the find_or_create by method to ensure that duplicate entries are not being created.  Protecting
-     # this method causes an exception to be thrown for anyone attempting to use this version of QME with the
-     # sematics of the older version to highlight the issue.
+    # In the older version of QME QualityReport was not treated as a persisted
+    # object. As a result anytime you wanted to get the cached results for a
+    # calculation you would create a new QR object which would then go to the db
+    # and see if the calculation was performed or not yet and then return the
+    # results.  Now that QR objects are persisted you need to go through the
+    # find_or_create by method to ensure that duplicate entries are not being
+    # created.  Protecting this method causes an exception to be thrown for
+    # anyone attempting to use this version of QME with the sematics of the
+    # older version to highlight the issue.
     def initialize(attrs = nil)
       super(attrs)
     end
