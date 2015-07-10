@@ -111,41 +111,32 @@ module QME
       self.map_config = QME::MapReduce::MapConfig.configure(params)
     end
 
+    def calculate_now(params)
+      configure(params)
+      queued!
+      QME::MapReduce::MeasureCalculationJob.new(id).perform
+    end
+
     # Kicks off a background job to calculate the measure
     # @return a unique id for the measure calculation job
-    def calculate(parameters, asynchronous=true)
-      configure(parameters)
+    def calculate(params)
+      configure(params)
 
-      options = {'quality_report_id' => self.id}
-      options.merge! parameters || {}
-
-      return self unless should_calculate?(options)
-
-      if (asynchronous)
-        if patients_cached?
-          queued!
-          enque_job(:rollup)
-        elsif calculation_queued_or_running?
-          stage_rollup!(options)
-        else
-          queued!
-          enque_job(:calculation)
-        end
+      if patients_cached?
+        enque_job(:rollup)
+      elsif calculation_queued_or_running?
+        stage_rollup!
       else
-        mcj = QME::MapReduce::MeasureCalculationJob.new(id)
-        mcj.perform
+        enque_job(:calculation)
       end
     end
 
     def enque_job(queue)
+      queued!
       Delayed::Job.enqueue(QME::MapReduce::MeasureCalculationJob.new(id), {queue: queue})
     end
 
-    def should_calculate?(options)
-      !calculated? || options['recalculate']
-    end
-
-    def stage_rollup!(options)
+    def stage_rollup!
       staged!
       rollup = {
         measure_id: measure_id,
