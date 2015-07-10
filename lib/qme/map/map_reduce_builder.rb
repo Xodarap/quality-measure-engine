@@ -3,31 +3,26 @@ require 'ostruct'
 
 module QME
   module MapReduce
-
     # Builds Map and Reduce functions for a particular measure
     class Builder
       attr_reader :id
 
       # Utility class used to supply a binding to Erb
       class Context < OpenStruct
-        # Create a new context
-        # @param [Hash] vars a hash of parameter names (String) and values (Object). Each
-        # entry is added as an accessor of the new Context
         def initialize(db, config)
           super(config.attributes)
           @db = db
         end
 
-        # Get a binding that contains all the instance variables
-        # @return [Binding]
         def get_binding
           binding
         end
 
-        # Inserts any library code into the measure JS. JS library code is loaded from
-        # three locations: the js directory of the quality-measure-engine project, the
-        # js sub-directory of the current directory (e.g. measures/js), and the bundles
-        # collection of the current database (used by the Rails Web application).
+        # Inserts any library code into the measure JS. JS library code is
+        # loaded from three locations: the js directory of the
+        # quality-measure-engine project, the js sub-directory of the current
+        # directory (e.g. measures/js), and the bundles collection of the
+        # current database (used by the Rails Web application).
         def init_js_frameworks
           result = ''
           result << 'if (typeof(map)=="undefined") {'
@@ -50,24 +45,13 @@ module QME
         @id = @measure['id']
         @db = db
 
-        # normalize parameters hash to accept either symbol or string keys
-        # params.each do |name, value|
-        #   @params[name.to_s] = value
-        # end
-        # @measure.parameters ||= {}
-        # @measure.parameters.each do |parameter, value|
-        #   if !@params.has_key?(parameter)
-        #     raise "No value supplied for measure parameter: #{parameter}"
-        #   end
-        # end
-        # if the map function is specified then replace any erb templates with their values
-        # taken from the supplied params
+        # if the map function is specified then replace any erb templates with
+        # their values taken from the supplied params
         # always true for actual measures, not always true for unit tests
-        if (@measure.map_fn)
-          template = ERB.new(@measure.map_fn)
-          context = Context.new(@db, @map_config)
-          @measure.map_fn = template.result(context.get_binding)
-        end
+        return if @measure.map_fn.blank?
+        template = ERB.new(@measure.map_fn)
+        context = Context.new(@db, @map_config)
+        @measure.map_fn = template.result(context.get_binding)
       end
 
       # Get the map function for the measure
@@ -121,8 +105,6 @@ module QME
 
         reduce
       end
-
-
     end
   end
 end

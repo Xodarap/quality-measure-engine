@@ -1,7 +1,6 @@
 module QME
   module MapReduce
     class MapConfig
-
       include Mongoid::Document
 
       field :enable_logging
@@ -30,7 +29,6 @@ module QME
           effective_date: nil
         )
       end
-
     end
   end
 end
