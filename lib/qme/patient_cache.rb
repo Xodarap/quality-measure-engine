@@ -1,4 +1,4 @@
- module QME
+module QME
   class PatientCache
     include Mongoid::Document
     include Mongoid::Timestamps

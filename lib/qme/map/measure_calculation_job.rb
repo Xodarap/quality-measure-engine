@@ -2,7 +2,7 @@ module QME
   module MapReduce
     # A delayed_job that allows for measure calculation by a delayed_job worker. Can be created as follows:
     #
-    #     Delayed::Job.enqueue QME::MapRedude::MeasureCalculationJob.new(quality_report, :effective_date => 1291352400, :test_id => xyzzy)
+    #     Delayed::Job.enqueue QME::MapRedude::MeasureCalculationJob.new(quality_report.id)
     #
     # MeasureCalculationJob will check to see if a measure has been calculated before running the calculation. It will do this by
     # checking the status of the quality report that this calculation job was created with.
@@ -12,34 +12,24 @@ module QME
     class MeasureCalculationJob
       attr_accessor :quality_report
 
-      def initialize(options)
-        @quality_report = QME::QualityReport.find(options["quality_report_id"])
-        @options = options
-        @options.merge! @quality_report.attributes
+      def initialize(qr_id)
+        @quality_report = QME::QualityReport.find(qr_id)
       end
 
       def perform
-        if !@quality_report.calculated?
-          map = QME::MapReduce::Executor.new(@quality_report.measure_id,@quality_report.sub_id, @options.merge('start_time' => Time.now.to_i))
-          if !@quality_report.patients_cached?
+        unless @quality_report.calculated?
+          map = QME::MapReduce::Executor.new(@quality_report)
+          unless @quality_report.patients_cached?
             tick('Starting MapReduce')
-            map.map_records_into_measure_groups(@options['prefilter'])
+            map.map_records_into_measure_groups(@quality_report['prefilter'])
             tick('MapReduce complete')
           end
 
           tick('Calculating group totals')
           result = map.count_records_in_measure_groups
-          @quality_report.result=result
-          # backwards compatibility with previous q cahce users.  Should be reomved going foward
-          # and provide a means to update existing results to the newer format
-          result.attributes.each_pair do |k,v|
-            unless k.to_s == "_id"
-              @quality_report[k]=v
-            end
-          end
-          @quality_report.save
-          completed("#{@measure_id}#{@sub_id}: p#{result[QME::QualityReport::POPULATION]}, d#{result[QME::QualityReport::DENOMINATOR]}, n#{result[QME::QualityReport::NUMERATOR]}, excl#{result[QME::QualityReport::EXCLUSIONS]}, excep#{result[QME::QualityReport::EXCEPTIONS]}")
-          QME::QualityReport.queue_staged_rollups(@quality_report.measure_id,@quality_report.sub_id,@quality_report.effective_date)
+          @quality_report.update_attribute(:result, result)
+          completed(completion_summary(result))
+          @quality_report.queue_staged_rollups
         end
         @quality_report
       end
@@ -80,26 +70,29 @@ module QME
         @quality_report.save
       end
 
-    # Returns the status of a measure calculation job
-    # @param job_id the id of the job to check on
-    # @return [Symbol] Will return the status: :complete, :queued, :running, :failed
-    def self.status(job_id)
-      job = Delayed::Job.where(_id: job_id).first
-      if job.nil?
-        # If we can't find the job, we assume that it is complete
-        :complete
-      else
-        if job.locked_at.nil?
+      # Returns the status of a measure calculation job
+      # @param job_id the id of the job to check on
+      # @return [Symbol] Will return the status: :complete, :queued, :running, :failed
+      def self.status(job_id)
+        job = Delayed::Job.where(_id: job_id).first
+        if job.nil?
+          # If we can't find the job, we assume that it is complete
+          :complete
+        elsif job.locked_at.nil?
           :queued
+        elsif job.failed?
+          :failed
         else
-          if job.failed?
-            :failed
-          else
-            :running
-          end
+          :running
         end
       end
-    end
+
+      private
+
+      def completion_summary(result)
+        "#{@measure_id}#{@sub_id}: p#{result[QME::QualityReport::POPULATION]}, d#{result[QME::QualityReport::DENOMINATOR]}, n#{result[QME::QualityReport::NUMERATOR]}, excl#{result[QME::QualityReport::EXCLUSIONS]}, excep#{result[QME::QualityReport::EXCEPTIONS]}"
+      end
+
     end
   end
 end

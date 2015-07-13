@@ -1,6 +1,6 @@
 require 'test_helper'
 
-class CVAggregatorTest < MiniTest::Unit::TestCase
+class CVAggregatorTest < Minitest::Test
 
   def test_median_with_simple_odd_size_set
     calc({90.0 => 1, 4315.0 => 2}, 4315.0)

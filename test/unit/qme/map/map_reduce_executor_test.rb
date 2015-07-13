@@ -1,6 +1,6 @@
 require 'test_helper'
 
-class MapReduceExecutorTest < MiniTest::Unit::TestCase
+class MapReduceExecutorTest < Minitest::Test
   include QME::DatabaseAccess
 
   def setup
@@ -12,13 +12,13 @@ class MapReduceExecutorTest < MiniTest::Unit::TestCase
     collection_fixtures(get_db(), 'bundles')
     options = {'measure_id' => "2E679CD2-3FEC-4A75-A75A-61403E5EFEE8",
                'effective_date' => Time.gm(2011, 1, 15).to_i}
-    @quality_report =QME::QualityReport.find_or_create_by(options)
+    @quality_report = QME::QualityReport.find_or_create_by(options)
+    @quality_report.configure
     load_system_js
   end
 
   def test_map_records_into_measure_groups
-    executor = QME::MapReduce::Executor.new(@quality_report.measure_id,@quality_report.sub_id, {
-                                            'effective_date' => Time.gm(2011, 1, 15).to_i})
+    executor = QME::MapReduce::Executor.new(@quality_report)
 
     executor.map_records_into_measure_groups
 
@@ -32,8 +32,7 @@ class MapReduceExecutorTest < MiniTest::Unit::TestCase
 
 
   def test_calculate_supplemental_data_elements
-    executor = QME::MapReduce::Executor.new(@quality_report.measure_id,@quality_report.sub_id, {
-                                            'effective_date' => Time.gm(2011, 1, 15).to_i})
+    executor = QME::MapReduce::Executor.new(@quality_report)
 
     executor.map_records_into_measure_groups
     result = executor.count_records_in_measure_groups
@@ -63,25 +62,21 @@ class MapReduceExecutorTest < MiniTest::Unit::TestCase
      }
 
 
-
     assert_equal ipp, suppl[QME::QualityReport::POPULATION]
     assert_equal denom, suppl[QME::QualityReport::DENOMINATOR]
     assert_equal numer, suppl[QME::QualityReport::NUMERATOR]
-
-
   end
 
   def test_count_records_in_measure_groups
-    executor = QME::MapReduce::Executor.new(@quality_report.measure_id,@quality_report.sub_id, {
-                                            'effective_date' => Time.gm(2011, 1, 15).to_i})
+    executor = QME::MapReduce::Executor.new(@quality_report)
     executor.map_records_into_measure_groups
     result = executor.count_records_in_measure_groups
     assert_equal 3, result[QME::QualityReport::POPULATION]
     assert_equal 2, result[QME::QualityReport::DENOMINATOR]
     assert_equal 1, result[QME::QualityReport::NUMERATOR]
 
-    executor = QME::MapReduce::Executor.new(@quality_report.measure_id,@quality_report.sub_id, {
-                                            'effective_date' => Time.gm(2011, 1, 14).to_i})
+    @quality_report.effective_date = Time.gm(2011, 1, 14).to_i
+    executor = QME::MapReduce::Executor.new(@quality_report)
 
     result = executor.count_records_in_measure_groups
     assert_equal 0, result[QME::QualityReport::POPULATION]
@@ -90,8 +85,7 @@ class MapReduceExecutorTest < MiniTest::Unit::TestCase
   end
 
   def test_map_record_into_measure_groups
-    executor = QME::MapReduce::Executor.new( @quality_report.measure_id,@quality_report.sub_id, {
-                                            'effective_date' => Time.gm(2011, 1, 15).to_i})
+    executor = QME::MapReduce::Executor.new(@quality_report)
     executor.map_record_into_measure_groups("12345")
 
     assert_equal 1, QME::PatientCache.count
@@ -102,30 +96,16 @@ class MapReduceExecutorTest < MiniTest::Unit::TestCase
   end
 
   def test_get_patient_result
-    executor = QME::MapReduce::Executor.new(@quality_report.measure_id,@quality_report.sub_id, {
-                                            'effective_date' => Time.gm(2011, 1, 15).to_i})
+    executor = QME::MapReduce::Executor.new(@quality_report)
     result = executor.get_patient_result("12345")
     assert_equal 0, QME::PatientCache.count
     assert result[QME::QualityReport::NUMERATOR]
   end
 
   def test_provider_assignment
-    executor = QME::MapReduce::Executor.new(@quality_report.measure_id,@quality_report.sub_id, {
-                                            'effective_date' => Time.gm(2011, 1, 15).to_i})
+    executor = QME::MapReduce::Executor.new(@quality_report)
     executor.map_records_into_measure_groups
     assert_equal 4, get_db['patient_cache'].find("value.provider_performances" => {'$size' => 1}).count
     assert_equal 1, QME::PatientCache.where('value.medical_record_id' => '12345', 'value.provider_performances.provider_id' => 'too_early_provider').count
   end
-
-  def test_get_patient_result_with_bundle_id
-    measure_id = "2E679CD2-3FEC-4A75-A75A-61403E5EFEE8"
-    bundle_id = get_db()['bundles'].find.first
-    get_db()['measures'].find('id' => measure_id).update(:$set => {'bundle_id' => bundle_id})
-    executor = QME::MapReduce::Executor.new(measure_id, nil,
-                                            'effective_date' => Time.gm(2011, 1, 15).to_i, 'bundle_id' => bundle_id)
-    result = executor.get_patient_result("12345")
-    assert_equal 0, get_db['patient_cache'].find().count
-    assert result[QME::QualityReport::NUMERATOR]
-  end
-
 end

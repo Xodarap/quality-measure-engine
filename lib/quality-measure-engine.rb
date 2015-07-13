@@ -4,13 +4,17 @@ require 'moped'
 require 'delayed_job_mongoid'
 require 'zip/zip'
 
+require 'health-data-standards'
+
 require "qme/version"
 require 'qme/database_access'
 require 'qme/quality_measure'
 require 'qme/quality_report'
 require 'qme/patient_cache'
 require 'qme/manual_exclusion'
+require 'qme/oid_helper'
 
+require 'qme/map/map_config'
 require 'qme/map/map_reduce_builder'
 require 'qme/map/map_reduce_executor'
 require 'qme/map/measure_calculation_job'
