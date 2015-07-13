@@ -91,6 +91,26 @@ module QME
 
     alias_method :calculated?, :completed?
 
+    def performance_rate
+      100 * performance_numerator / [performance_denominator, 1].max
+    end
+
+    def performance_numerator
+      result.present? ? result.NUMER : 0
+    end
+
+    def performance_antinumerator
+      performance_denominator - performance_numerator
+    end
+
+    def performance_denominator
+      if result.present?
+        result.DENOM - result.DENEX - result.DENEXCEP
+      else
+        0
+      end
+    end
+
     # Determines whether the patient mapping for the quality report has been
     # completed
     def patients_cached?
