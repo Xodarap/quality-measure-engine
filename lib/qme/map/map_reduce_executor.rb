@@ -87,7 +87,7 @@ module QME
                 QME::QualityReport::CMS_PAYER => {}
           }]
         end
-        supplemental_data = Hash[alist.flatten]
+        supplemental_data = Hash[*alist.flatten]
 
         keys.each do |pop_id|
           _match = match.clone
