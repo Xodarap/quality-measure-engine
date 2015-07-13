@@ -1,31 +1,33 @@
 require 'test_helper'
 
 class MapConfigTest < Minitest::Test
-
-  def test_default_mapconfig
-    config = QME::MapReduce::MapConfig.default_config
-
-    assert config.is_a? QME::MapReduce::MapConfig
+  def test_error_if_no_effective_date
+    assert_raises KeyError do
+      QME::MapReduce::MapConfig.new(short_circuit: false)
+    end
   end
 
-  def test_configure
-    config = QME::MapReduce::MapConfig.default_config
-    new_config = config.configure({
+  def test_defaults
+    config = QME::MapReduce::MapConfig.new(
       short_circuit: false,
       enable_rationale: true,
-      oid_dictionary: { key: 'value' },
-      erraneous_key: 'is ignored'
-    })
+      effective_date: 123
+    )
 
-    expected = {
-      'enable_logging' => false,
-      'enable_rationale' => true,
-      'short_circuit' => false,
-      'oid_dictionary' => { key: 'value' },
-      'effective_date' => nil
-    }
-
-    assert_equal new_config.attributes.except('_id'), expected
+    assert config.enable_rationale
+    assert !config.enable_logging
+    assert_equal config.oid_dictionary, {}
   end
 
+  def test_reconfigure
+    config = QME::MapReduce::MapConfig.new(
+      short_circuit: false,
+      enable_rationale: true,
+      effective_date: 123
+    )
+
+    config.reconfigure(short_circuit: true)
+
+    assert config.short_circuit
+  end
 end

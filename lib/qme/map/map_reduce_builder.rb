@@ -38,7 +38,7 @@ module QME
       end
 
       # Create a new Builder
-      def initialize(db, measure, map_config = MapConfig.default_config)
+      def initialize(db, measure, map_config)
         @map_config = map_config
         @effective_date = map_config.effective_date
         @measure = measure

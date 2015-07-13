@@ -104,13 +104,16 @@ module QME
     end
 
     def configure(params = {})
-      config = map_config || QME::MapReduce::MapConfig.default_config
       params[:effective_date] = effective_date
       if measure.present?
         oid_dictionary = OidHelper.generate_oid_dictionary(measure['oids'])
         params[:oid_dictionary] = oid_dictionary
       end
-      self.map_config = config.configure(params)
+      if map_config.present?
+        self.map_config = map_config.reconfigure(params)
+      else
+        self.map_config = QME::MapReduce::MapConfig.new(params)
+      end
     end
 
     def calculate_now

@@ -11,23 +11,22 @@ module QME
 
       embedded_in :quality_report, class_name: 'QME::MapReduce::QualityReport'
 
-      def configure(params)
+      def initialize(params)
+        super
+        self.enable_logging   = params.fetch(:enable_logging, false)
+        self.enable_rationale = params.fetch(:enable_rationale, false)
+        self.short_circuit    = params.fetch(:short_circuit, false)
+        self.oid_dictionary   = params.fetch(:oid_dictionary, {})
+        self.effective_date   = params.fetch(:effective_date)
+      end
+
+      def reconfigure(params)
         params.each do |key, value|
           if attribute_names.include? key.to_s
             self[key] = value unless value.nil?
           end
         end
         self
-      end
-
-      def self.default_config
-        new(
-          enable_logging: false,
-          enable_rationale: false,
-          short_circuit: false,
-          oid_dictionary: {},
-          effective_date: nil
-        )
       end
     end
   end
